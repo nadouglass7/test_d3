@@ -1,128 +1,62 @@
 
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
-    <script type="text/javascript" src="https://d3js.org/d3.v5.js"></script>
-    <script type="text/javascript" src="js/d3.geo.js"></script>
-    <link type="text/css" rel="stylesheet" href="css/style.css"/>
-    <link type="text/css" rel="stylesheet" href="css/colorbrewer/colorbrewer.css"/>
-    <style type="text/css">
+<canvas width="960" height="600"></cavnas>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://unpkg.com/topojson-client@2"></script>
+<script src="versor.js"></script>
+<script>
 
-svg {
-  width: 1280px;
-  height: 800px;
-  pointer-events: all;
+var canvas = d3.select("canvas"),
+    width = canvas.property("width"),
+    height = canvas.property("height"),
+    context = canvas.node().getContext("2d");
+
+var projection = d3.geoOrthographic()
+    .scale((height - 10) / 2)
+    .translate([width / 2, height / 2])
+    .precision(0.1);
+
+var path = d3.geoPath()
+    .projection(projection)
+    .context(context);
+
+canvas.call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged));
+
+var render = function() {},
+    v0, // Mouse position in Cartesian coordinates at start of drag gesture.
+    r0, // Projection rotation as Euler angles at start.
+    q0; // Projection rotation as versor at start.
+
+function dragstarted() {
+  v0 = versor.cartesian(projection.invert(d3.mouse(this)));
+  r0 = projection.rotate();
+  q0 = versor(r0);
 }
 
-circle {  
-  fill: #dbe4f0;
+function dragged() {
+  var v1 = versor.cartesian(projection.rotate(r0).invert(d3.mouse(this))),
+      q1 = versor.multiply(q0, versor.delta(v0, v1)),
+      r1 = versor.rotation(q1);
+  projection.rotate(r1);
+  render();
 }
 
-path {
-  fill: #aaa;
-  stroke: #fff;
-}
+d3.json("https://unpkg.com/world-atlas@1/world/110m.json", function(error, world) {
+  if (error) throw error;
 
-    </style>
-  </head>
-  <body>
-    <div id="body">
-      <div id="footer">
-        d3.geo.azimuthal
-        <div class="hint">drag to rotate the origin</div>
-        <div><select>
-          <option value="equalarea">equalarea</option>
-          <option value="equidistant">equidistant</option>
-          <option value="gnomonic">gnomonic</option>
-          <option value="orthographic" selected>orthographic</option>
-          <option value="stereographic">stereographic</option>
-        </select></div>
-      </div>
-    </div>
-    <script type="text/javascript">
+  var sphere = {type: "Sphere"},
+      land = topojson.feature(world, world.objects.land);
 
-var feature;
+  render = function() {
+    context.clearRect(0, 0, width, height);
+    context.beginPath(), path(sphere), context.fillStyle = "#fff", context.fill();
+    context.beginPath(), path(land), context.fillStyle = "#000", context.fill();
+    context.beginPath(), path(sphere), context.stroke();
+  };
 
-var projection = d3.geo.azimuthal()
-    .scale(380)
-    .origin([-71.03,42.37])
-    .mode("orthographic")
-    .translate([640, 400]);
-
-var circle = d3.geo.greatCircle()
-    .origin(projection.origin());
-
-// TODO fix d3.geo.azimuthal to be consistent with scale
-var scale = {
-  orthographic: 380,
-  stereographic: 380,
-  gnomonic: 380,
-  equidistant: 380 / Math.PI * 2,
-  equalarea: 380 / Math.SQRT2
-};
-
-var path = d3.geo.path()
-    .projection(projection);
-
-var svg = d3.select("#body").append("svg:svg")
-    .attr("width", 1280)
-    .attr("height", 800)
-    .on("mousedown", mousedown);
-
-d3.json("data/countries.json", function(collection) {
-  feature = svg.selectAll("path")
-      .data(collection.features)
-    .enter().append("svg:path")
-      .attr("d", clip);
-
-  feature.append("svg:title")
-      .text(function(d) { return d.properties.name; });
+  render();
 });
 
-d3.select(window.top)
-    .on("mousemove", mousemove)
-    .on("mouseup", mouseup);
-
-d3.select("select").on("change", function() {
-  projection.mode(this.value).scale(scale[this.value]);
-  refresh(750);
-});
-
-var m0,
-    o0;
-
-function mousedown() {
-  m0 = [d3.event.pageX, d3.event.pageY];
-  o0 = projection.origin();
-  d3.event.preventDefault();
-}
-
-function mousemove() {
-  if (m0) {
-    var m1 = [d3.event.pageX, d3.event.pageY],
-        o1 = [o0[0] + (m0[0] - m1[0]) / 8, o0[1] + (m1[1] - m0[1]) / 8];
-    projection.origin(o1);
-    circle.origin(o1)
-    refresh();
-  }
-}
-
-function mouseup() {
-  if (m0) {
-    mousemove();
-    m0 = null;
-  }
-}
-
-function refresh(duration) {
-  (duration ? feature.transition().duration(duration) : feature).attr("d", clip);
-}
-
-function clip(d) {
-  return path(circle.clip(d));
-}
-
-    </script>
-  </body>
-</html>
+</script>
