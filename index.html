@@ -70,7 +70,7 @@ var svg = d3.select("#body").append("svg:svg")
     .attr("height", 800)
     .on("mousedown", mousedown);
 
-d3.json("world-countries.json", function(collection) {
+d3.json("data/land.js", function(collection) {
   feature = svg.selectAll("path")
       .data(collection.features)
     .enter().append("svg:path")
