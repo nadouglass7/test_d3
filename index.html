@@ -15,7 +15,7 @@ svg {
   pointer-events: all;
 }
 
-circle {
+circle {  
   fill: #dbe4f0;
 }
 
@@ -80,7 +80,7 @@ d3.json("data/countries.json", function(collection) {
       .text(function(d) { return d.properties.name; });
 });
 
-d3.select(window)
+d3.select(window.top)
     .on("mousemove", mousemove)
     .on("mouseup", mouseup);
 
